@@ -1,0 +1,188 @@
+---
+# Source: node-instance-decorator/templates/service-account.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: node-instance-decorator
+  namespace: tron
+  labels:
+    helm.sh/chart: node-instance-decorator-0.1.0
+    app.kubernetes.io/name: node-instance-decorator
+    app.kubernetes.io/instance: node-instance-decorator
+    app.kubernetes.io/version: "20220618"
+    app.kubernetes.io/managed-by: Helm
+    tron/correlationId: "bm9kZS1pbnN0YW5jZS1kZWNvcmF0b3I"
+  annotations:
+    eks.amazonaws.com/role-arn: (Will be substituted by makefile parameter ROLE_ARN)
+---
+# Source: node-instance-decorator/templates/manager-role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: node-instance-decorator-role
+  namespace: tron
+  labels:
+    helm.sh/chart: node-instance-decorator-0.1.0
+    app.kubernetes.io/name: node-instance-decorator
+    app.kubernetes.io/instance: node-instance-decorator
+    app.kubernetes.io/version: "20220618"
+    app.kubernetes.io/managed-by: Helm
+    tron/correlationId: "bm9kZS1pbnN0YW5jZS1kZWNvcmF0b3I"
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["nodes/status"]
+  verbs: ["get"]
+---
+# Source: node-instance-decorator/templates/manager-role-binding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: node-instance-decorator-rolebinding
+  namespace: tron
+  labels:
+    helm.sh/chart: node-instance-decorator-0.1.0
+    app.kubernetes.io/name: node-instance-decorator
+    app.kubernetes.io/instance: node-instance-decorator
+    app.kubernetes.io/version: "20220618"
+    app.kubernetes.io/managed-by: Helm
+    tron/correlationId: "bm9kZS1pbnN0YW5jZS1kZWNvcmF0b3I"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: node-instance-decorator-role
+subjects:
+- kind: ServiceAccount
+  name: node-instance-decorator
+  namespace: tron
+---
+# Source: node-instance-decorator/templates/leader-election-role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: node-instance-decorator-leader-election-role
+  namespace: tron
+  labels:
+    helm.sh/chart: node-instance-decorator-0.1.0
+    app.kubernetes.io/name: node-instance-decorator
+    app.kubernetes.io/instance: node-instance-decorator
+    app.kubernetes.io/version: "20220618"
+    app.kubernetes.io/managed-by: Helm
+    tron/correlationId: "bm9kZS1pbnN0YW5jZS1kZWNvcmF0b3I"
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+---
+# Source: node-instance-decorator/templates/leader-election-role-binding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: node-instance-decorator-leader-election-rolebinding
+  namespace: tron
+  labels:
+    helm.sh/chart: node-instance-decorator-0.1.0
+    app.kubernetes.io/name: node-instance-decorator
+    app.kubernetes.io/instance: node-instance-decorator
+    app.kubernetes.io/version: "20220618"
+    app.kubernetes.io/managed-by: Helm
+    tron/correlationId: "bm9kZS1pbnN0YW5jZS1kZWNvcmF0b3I"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: node-instance-decorator-leader-election-role
+subjects:
+- kind: ServiceAccount
+  name: node-instance-decorator
+  namespace: tron
+---
+# Source: node-instance-decorator/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-instance-decorator-operator
+  namespace: tron
+  labels:
+    helm.sh/chart: node-instance-decorator-0.1.0
+    app.kubernetes.io/name: node-instance-decorator
+    app.kubernetes.io/instance: node-instance-decorator
+    app.kubernetes.io/version: "20220618"
+    app.kubernetes.io/managed-by: Helm
+    tron/correlationId: "bm9kZS1pbnN0YW5jZS1kZWNvcmF0b3I"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: node-instance-decorator
+      app.kubernetes.io/instance: node-instance-decorator
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+      labels:
+        app.kubernetes.io/name: node-instance-decorator
+        app.kubernetes.io/instance: node-instance-decorator
+    spec:
+      containers:
+      - name: node-instance-decorator
+        command:
+        - /manager
+        image: "(Will be substituted by makefile parameter REPO_URI):20220618"
+        imagePullPolicy: Always
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 128Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: node-instance-decorator
+      terminationGracePeriodSeconds: 10
