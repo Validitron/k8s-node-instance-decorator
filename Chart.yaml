@@ -11,3 +11,7 @@ version: 0.1.0
 # The app version is used to tag images. It does not need to follow semantic versioning rules.
 # Tron uses date versioning by convention.
 appVersion:   "20220618"
+
+maintainers: 
+  - name: Kit Huckvale
+    email: kit.huckvale@unimelb.edu.au

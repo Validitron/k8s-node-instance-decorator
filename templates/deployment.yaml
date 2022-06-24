@@ -20,7 +20,7 @@ spec:
       containers:
       - name: {{ .Chart.Name }}
         command:
-        - /manager
+        - /node-instance-decorator
         image: "{{ required "Image repository must must be supplied as value 'image.repository'." .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         livenessProbe:

@@ -1,5 +1,5 @@
 {
-    "name": "Prepare AWS IAM role and policy for node-instance-decorator",
+    "name": "Prepare AWS for node-instance-decorator",
     "type": "container",
     "author": "Kit Huckvale",
     "version": "0.1.0",
@@ -16,8 +16,9 @@
     ],
     "remarks": [
         "Creates required IAM role and policy for the node-instance-decorator to run (see https://docs.aws.amazon.com/eks/latest/userguide/specify-service-account-role.html)",
+        "Additionally creates a private ECR repository to deploy node-instance-decorator into.",
         "This is a necessary step before installing the decorator in an AWS EKS cluster.",
-        "Will skip (without error) installation if the policy or role already exist."
+        "Will skip (without error) installation if the policy, role or repository already exist."
     ],
     "parameters": [
         {
@@ -66,8 +67,8 @@
                     "value": "{nodeInstanceDecorator.iam.policy.name}"
                 },
                 {
-                    "key": "serviceAccount.iam.policy.trustPolicyPath",
-                    "value": "{nodeInstanceDecorator.iam.policy.trustPolicyPath}"
+                    "key": "serviceAccount.iam.policy.trustPolicyTemplatePath",
+                    "value": "{nodeInstanceDecorator.iam.policy.trustPolicyTemplatePath}"
                 },
                 {
                     "key": "serviceAccount.iam.serviceRole.nameSuffix",
@@ -100,8 +101,12 @@
         {
             "name": "Write configuration to console",
             "type": "output",
-            "label": "Service role configuration",
+            "label": "AWS configuration",
             "outputParameters": [
+                {
+                    "key": "cluster.arn",
+                    "value": "{cluster.arn}"
+                },
                 {
                     "key": "nodeInstanceDecorator.iam.serviceRole.arn",
                     "value": "{nodeInstanceDecorator.iam.serviceRole.arn}"

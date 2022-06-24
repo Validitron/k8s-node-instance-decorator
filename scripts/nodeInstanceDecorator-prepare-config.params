@@ -3,7 +3,7 @@
       "iam": {
          "policy": {
             "name": "k8sNodeInstanceDecoratorPolicy",
-            "trustPolicyPath": "{_script.directoryPath}\\_resources\\nodeInstanceDecorator-iam-role-trust-policy.json"
+            "trustPolicyTemplatePath": "{_script.directoryPath}\\_resources\\nodeInstanceDecorator-iam-role-trust-policy.template"
          },
          "serviceRole": {
             "nameSuffix": "k8sNodeInstanceDecoratorRole"

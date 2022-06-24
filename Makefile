@@ -69,7 +69,7 @@ helm-debug: #Write out debugging informaiton and generate the intermediate yaml 
 
 .PHONY: build
 build: fmt vet ## Build manager binary.
-	go build -o bin/manager main.go
+	go build -o bin/node-instance-decorator main.go
 
 .PHONY: docker-build
 docker-build: ## Build docker image with the manager.

@@ -1,5 +1,7 @@
 # node-instance-decorator
-K8s operator that automatically names EC2 node instances for easier identification as K8s worker nodes
+K8s operator that automatically names EC2 node instances for easier identification as K8s worker nodes.
+
+<br/>
 
 ## Description
 The instance decorator solves the problem of identifying which EC2 instances belong to EKS K8s worker nodes by automatically updating their Name label. These can then be easily viewed/searched using the AWS EC2 web console or CLI.
@@ -7,50 +9,81 @@ The instance decorator solves the problem of identifying which EC2 instances bel
 Nodes are named using the pattern:
     eks-{clusterName}-{nodeGroupName}-ip-{vpcIpAddress}
 
-Cluster deployment is a Helm chart.
+<br/>
 
-Node instance decorator is intended to be run as a singleton within a given cluster. There is no advantage to running multiple instances.
+## Operator scope
 
-## Prerequisites
+node-instance-decorator does *not* scope its activities to the namespace in which it is installed. You should not therefore install multiple copies in different namespaces on a single cluster.
+
+A single installation will manage node naming across an entire cluster. 
+
+<br/>
+
+## Cluster installation
+
+node-instance-decorator consists of two components:
+- An image containing the operator
+- A Helm chart containing the K8s deployment
+
+Both must be installed to use the operator within a cluster.
+
+### Prerequisites
 You will need:
-    - An AWS EKS cluster with at least one node group, and the ARN associated with this cluster.
-    - An AWS ECR repository in which to deploy the operator image, and the URI associated with this repository. 
+- An AWS EKS cluster with at least one node group, and the ARN associated with this cluster.
+- An AWS ECR repository into which to deploy the operator image, and the URI associated with this repository. 
+- Local installations of golang, kubectl, aws-cli and helm. On Windows, these should be installed within WSL.
+- Local installation of script-runner, if intending to use scripted IAM role/policy creation.
 
-### Installing into the cluster
+    **NOTE:** The .kubeconfig associated with the WSL kubectl is *NOT* the same as the one used in Windows. 
+Verify cluster access within WSL using `kubectl config get-contexts` and, if  necessary, add the required context using e.g. `aws --region {aws.region} eks update-kubeconfig --name {cluster.name}`. 
 
-1. Create an IAM role and associated policy that grants permission for the relevant EC2 operations.
+### Procedure
+
+1. Create an IAM role and associated policy that grants permission for the relevant EC2 operations. Note the ARN of the role that is created.
+
+   - Script runner can automate this task:
    
-```sh
-script-runner scripts\nodeInstanceDecorator-prepare-config -p "cluster.arn:{CLUSTER_ARN}"
-```
+    ```
+        script-runner scripts\nodeInstanceDecorator-prepare-config -p "cluster.arn:{CLUSTER_ARN}"
+    ```
 
-Note the ARN of the role that is created.
+   - To do this manually, follow the instructions at https://docs.aws.amazon.com/eks/latest/userguide/specify-service-account-role.html using the trust policy template `scripts\_resources\nodeInstanceDecorator-iam-role-trust-policy.template`.
 
-
-1. Build and push your image to ECR.
+    <br/>
+    
+2. Build and push the operator image to ECR.
 	
-```sh
-make docker-build docker-push REPO_URI={REPOSITORY_URI}
-```
+    ```sh
+        make docker-build docker-push REPO_URI={REPOSITORY_URI}
+    ```
+
+    **NOTE:** On Windows, run this command within WSL.
 	
-1. Deploy the controller to the cluster.
+    <br/>
+    
+3. Deploy the operator to the cluster.
 
-```sh
-make deploy REPO_URI={REPOSITORY_URI} CLUSTER_ARN={CLUSTER_ARN} ROLE_ARN={ROLE_ARN}
-```
+    ```sh
+        make deploy REPO_URI={REPOSITORY_URI} CLUSTER_ARN={CLUSTER_ARN} ROLE_ARN={ROLE_ARN}
+    ```
+    
+    **NOTE:** On Windows, run this command within WSL.
 
-Existing worker nodes should be processed and their names updated automatically in the EC2 instance list.
+    Existing worker nodes should be processed and their corresponding EC2 instance names updated automatically. You can view these names using e.g. the AWS EC2 web  console or CLI.
 
-
-### Uninstallation
+## Uninstallation
 Remove the operator from the cluster using:
 
 ```sh
-make undeploy
+    make undeploy CLUSTER_ARN={CLUSTER_ARN}
 ```
 
-### How it works
+<br/>
+
+## How it works
 This project uses the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
+
+It was built from a kubebuilder project and subsequently modified to use Helm.
 
 It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/) 
 which provides a reconcile function responsible for synchronizing resources until the desired state is reached on the cluster.
@@ -59,13 +92,14 @@ which provides a reconcile function responsible for synchronizing resources unti
 
 More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
 
+<br/>
 
-### Debugging 
+## Debugging 
 To debug the Helm chart and inspect the intermediate yaml file that is created run:
 
 ```sh
 make helm-debug
 ```
 
-Output will be generated as debug.yaml
+Output will be generated as `debug.yaml`
 
