@@ -7,13 +7,13 @@ K8s operator that automatically names EC2 node instances for easier identificati
 The instance decorator solves the problem of identifying which EC2 instances belong to EKS K8s worker nodes by automatically updating their Name label. These can then be easily viewed/searched using the AWS EC2 web console or CLI.
 
 Nodes are named using the pattern:
-    eks-{clusterName}-{nodeGroupName}-ip-{vpcIpAddress}
+    {ClusterName}-eks-{NodeGroupName}-workerNode-{NodeIPAddress} ({Zone}, {OperatingSystem})
 
 <br/>
 
 ## Operator scope
 
-node-instance-decorator does *not* scope its activities to the namespace in which it is installed. You should not therefore install multiple copies in different namespaces on a single cluster.
+node-instance-decorator does *not* scope its activities to the namespace in which it is installed. You do not need to (and should not) install copies into different namespaces within a single cluster.
 
 A single installation will manage node naming across an entire cluster. 
 
@@ -37,7 +37,7 @@ You will need:
     **NOTE:** The .kubeconfig associated with the WSL kubectl is *NOT* the same as the one used in Windows. 
 Verify cluster access within WSL using `kubectl config get-contexts` and, if  necessary, add the required context using e.g. `aws --region {aws.region} eks update-kubeconfig --name {cluster.name}`. 
 
-### Procedure
+### Installation procedure
 
 1. Create an IAM role and associated policy that grants permission for the relevant EC2 operations. Note the ARN of the role that is created.
 
@@ -70,6 +70,26 @@ Verify cluster access within WSL using `kubectl config get-contexts` and, if  ne
     **NOTE:** On Windows, run this command within WSL.
 
     Existing worker nodes should be processed and their corresponding EC2 instance names updated automatically. You can view these names using e.g. the AWS EC2 web  console or CLI.
+
+<br/>
+
+## Using in Kubernetes
+
+The operator is fully automated - no action is required once installation is complete.
+
+Review the EC2 worker node instances to confirm that their names are being automatically configured.
+
+<br/>
+
+## Configuration
+
+You can modify how worker nodes are named by configuring the `config.nameTemplate` key in `values.yaml`.
+
+A name template is a string containing one or more substitution parameters delimited by curly braces, e.g. `{Zone}`.
+
+Valid substitution parameters are: {Zone}, {ClusterName}, {NodeGroupName}, {NodeIPAddress}, {HostName}, {OperatingSystem}, {Architecture}
+
+<br/>
 
 ## Uninstallation
 Remove the operator from the cluster using:

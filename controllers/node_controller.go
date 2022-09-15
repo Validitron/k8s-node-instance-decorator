@@ -13,12 +13,15 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/fatih/structs"
 	corev1 "k8s.io/api/core/v1"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -27,20 +30,35 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// NodeReconciler reconciles built-in Node objects.
+// NodeReconciler adds informative Name label to EC2 instances corresponding to worker Nodes in a given EKS cluster.
 type NodeReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
 
 const (
-	NAME_TEMPLATE           = "eks-%s-%s-workerNode-%s"
-	CLUSTER_TAG_NAME        = "eks:cluster-name"
-	NODE_GROUP_TAG_NAME     = "eks:nodegroup-name"
-	NAME_TAG_NAME           = "Name"
-	NAME_TAG_MAX_LENGTH     = 256
-	DEFAULT_REQUEUE_LATENCY = 15 * time.Second
+	CLUSTER_TAG_NAME    = "eks:cluster-name"
+	NODE_GROUP_TAG_NAME = "eks:nodegroup-name"
+
+	NAME_TEMPLATE         = "NAME_TEMPLATE"
+	DEFAULT_NAME_TEMPLATE = "{ClusterName}-eks-{NodeGroupName}-workerNode-{NodeIPAddress} ({Zone}, {OperatingSystem})"
+
+	NAME_TAG_NAME       = "Name"
+	NAME_TAG_MAX_LENGTH = 256
+
+	DEFAULT_REQUEUE_LATENCY = 30 * time.Second
 )
+
+type SubstitutionParameters struct {
+	Region          string
+	Zone            string
+	ClusterName     string
+	NodeGroupName   string
+	NodeIPAddress   string
+	HostName        string
+	OperatingSystem string
+	Architecture    string
+}
 
 func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// Tells the controller which object type this reconciler will handle.
@@ -120,21 +138,13 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 	instance := reservation.Instances[0]
 
-	clusterName, err := r.GetTag(&instance, CLUSTER_TAG_NAME)
+	substitutionParameters, err := r.CollectSubstitutionParameters(&cfg, &instance)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Could not retrieve tag %s.", CLUSTER_TAG_NAME))
-		return ctrl.Result{RequeueAfter: DEFAULT_REQUEUE_LATENCY}, err
+		log.Error(err, "Could not collect substitution parameters.")
+		return ctrl.Result{RequeueAfter: DEFAULT_REQUEUE_LATENCY}, nil
 	}
 
-	nodeGroupName, err := r.GetTag(&instance, NODE_GROUP_TAG_NAME)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("Could not retrieve tag %s.", NODE_GROUP_TAG_NAME))
-		return ctrl.Result{RequeueAfter: DEFAULT_REQUEUE_LATENCY}, err
-	}
-
-	ipAddress := instance.PrivateIpAddress
-
-	compositeName := fmt.Sprintf(NAME_TEMPLATE, clusterName, nodeGroupName, *ipAddress)
+	compositeName := r.buildCompositeName(substitutionParameters, r.getStringEnv(NAME_TEMPLATE, DEFAULT_NAME_TEMPLATE))
 
 	runes := []rune(compositeName)
 	if len(runes) > NAME_TAG_MAX_LENGTH {
@@ -162,10 +172,41 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	_, err = ec2Client.CreateTags(context.TODO(), &tagInput)
 	if err != nil {
 		log.Error(err, "Failed to tag EC2 instance name.")
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: DEFAULT_REQUEUE_LATENCY}, err
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *NodeReconciler) CollectSubstitutionParameters(cfg *aws.Config, instance *types.Instance) (*SubstitutionParameters, error) {
+
+	output := SubstitutionParameters{
+		Region:          cfg.Region,
+		Zone:            *instance.Placement.AvailabilityZone,
+		NodeIPAddress:   *instance.PrivateIpAddress,
+		HostName:        *instance.PrivateDnsName,
+		OperatingSystem: string(instance.Platform),
+		Architecture:    string(instance.Architecture),
+	}
+
+	if output.OperatingSystem == "" {
+		output.OperatingSystem = "Linux"
+	}
+
+	clusterName, err := r.GetTag(instance, CLUSTER_TAG_NAME)
+	if err != nil {
+		return nil, err
+	}
+	output.ClusterName = clusterName
+
+	nodeGroupName, err := r.GetTag(instance, NODE_GROUP_TAG_NAME)
+	if err != nil {
+		return nil, err
+	}
+	output.NodeGroupName = nodeGroupName
+
+	return &output, nil
+
 }
 
 func (r *NodeReconciler) GetTag(instance *types.Instance, tagKey string) (string, error) {
@@ -177,4 +218,26 @@ func (r *NodeReconciler) GetTag(instance *types.Instance, tagKey string) (string
 	}
 
 	return "", fmt.Errorf("tag '%s' not found", tagKey)
+}
+
+func (r *NodeReconciler) getStringEnv(key string, defaultValue string) string {
+	result := os.Getenv(key)
+	if result == "" {
+		result = defaultValue
+	}
+	return result
+}
+
+func (r *NodeReconciler) buildCompositeName(substitutionParameters *SubstitutionParameters, template string) string {
+
+	parameterMap := structs.Map(substitutionParameters)
+	output := string(template)
+
+	for key, value := range parameterMap {
+
+		output = strings.ReplaceAll(output, fmt.Sprintf("{%s}", key), fmt.Sprintf("%v", value))
+
+	}
+
+	return output
 }

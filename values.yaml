@@ -1,6 +1,10 @@
 nameOverride: ""
 fullNameOverride: ""
 
+config:
+  # Defines how nodes will be named. Valid substitution parameters are: {Zone}, {ClusterName}, {NodeGroupName}, {NodeIPAddress}, {HostName}, {OperatingSystem}, {Architecture}
+  nameTemplate: "{ClusterName}-eks-{NodeGroupName}-workerNode-{NodeIPAddress} ({Zone}, {OperatingSystem})"
+
 context:
   # Optional value. The domain and username of the user installing the chart. Used to configure the label 'app.kubernetes.io/created-by'. Expected format: "{Domain}_{Username}" complying with label value formatting rules (See https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/). If not set, the label will be omitted.
   domainUsername: ""
