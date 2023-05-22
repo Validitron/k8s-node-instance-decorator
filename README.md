@@ -64,7 +64,7 @@ Verify cluster access within WSL using `kubectl config get-contexts` and, if  ne
 3. Deploy the operator to the cluster.
 
     ```sh
-        make deploy REPO_URI={REPOSITORY_URI} CLUSTER_ARN={CLUSTER_ARN} ROLE_ARN={ROLE_ARN}
+        make deploy REPO_URI={REPOSITORY_URI} CLUSTER_ARN={CLUSTER_ARN} ROLE_ARN={ROLE_ARN} NAMESPACE={NAMESPACE}
     ```
     
     **NOTE:** On Windows, run this command within WSL.
