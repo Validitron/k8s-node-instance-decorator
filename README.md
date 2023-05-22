@@ -30,10 +30,11 @@ Both must be installed to use the operator within a cluster.
 ### Prerequisites
 You will need:
 - An AWS EKS cluster with at least one node group, and the ARN associated with this cluster.
-- An AWS ECR repository into which to deploy the operator image, and the URI associated with this repository. 
+- An AWS ECR repository into which to deploy the operator image, and the URI associated with this repository. The URI can be obtained from the AWS web console or CLI.
 - Local installations of golang, kubectl, aws-cli and helm. On Windows, these should be installed within WSL.
 - Local installation of script-runner, if intending to use scripted IAM role/policy creation.
-
+- A Kubernetes namespace into which to install the operator. This namespace must exist and be specified using the {NAMESPACE} parameter below.
+- 
     **NOTE:** The .kubeconfig associated with the WSL kubectl is *NOT* the same as the one used in Windows. 
 Verify cluster access within WSL using `kubectl config get-contexts` and, if  necessary, add the required context using e.g. `aws --region {aws.region} eks update-kubeconfig --name {cluster.name}`. 
 
@@ -46,6 +47,8 @@ Verify cluster access within WSL using `kubectl config get-contexts` and, if  ne
     ```
         script-runner scripts\nodeInstanceDecorator-prepare-config -p "cluster.arn:{CLUSTER_ARN}"
     ```
+    
+    The value returned as `acmCertificateAgent.iam.serviceRole.arn` should be used as the ROLE_ARN below.
 
    - To do this manually, follow the instructions at https://docs.aws.amazon.com/eks/latest/userguide/specify-service-account-role.html using the trust policy template `scripts\_resources\nodeInstanceDecorator-iam-role-trust-policy.template`.
 
