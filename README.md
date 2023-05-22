@@ -54,7 +54,9 @@ Verify cluster access within WSL using `kubectl config get-contexts` and, if  ne
 
     <br/>
     
-2. Build and push the operator image to ECR.
+2. Build and push the operator image to ECR. 
+
+    **This step is not required if the operator image has previously been deployed to your AWS account.**
 	
     ```sh
         make docker-build docker-push REPO_URI={REPOSITORY_URI}
