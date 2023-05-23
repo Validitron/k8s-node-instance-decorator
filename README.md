@@ -56,24 +56,26 @@ Verify cluster access within WSL using `kubectl config get-contexts` and, if  ne
     
 2. Build and push the operator image to ECR. 
 
-    **This step is not required if the operator image has previously been deployed to your AWS account.**
+    **NOTE:** This step is not required if the operator image has previously been deployed to your AWS account.
+	
+    **NOTE:** On Windows, run this command within WSL.
 	
     ```sh
         make docker-build docker-push REPO_URI={REPOSITORY_URI}
     ```
 
-    **NOTE:** On Windows, run this command within WSL.
-	
     <br/>
     
 3. Deploy the operator to the cluster.
-
-    ```sh
-        make deploy REPO_URI={REPOSITORY_URI} CLUSTER_ARN={CLUSTER_ARN} ROLE_ARN={ROLE_ARN} NAMESPACE={NAMESPACE}
-    ```
     
     **NOTE:** On Windows, run this command within WSL.
+    
+    ```sh
+        make deploy REPO_URI={REPOSITORY_URI} CLUSTER_ARN={CLUSTER_ARN} ROLE_ARN={SERVICE_ROLE_ARN} NAMESPACE={NAMESPACE}
+    ```
 
+    `{Namespace}` is the name of the k8s namespace into which the operator should be installed. This namespace must exist.
+    
     Existing worker nodes should be processed and their corresponding EC2 instance names updated automatically. You can view these names using e.g. the AWS EC2 web  console or CLI.
 
 <br/>
